@@ -1,14 +1,14 @@
 /*                   FEATURE'S PROCEDURES                   */
 
 /*
- NAME: add_new_feature
- DESCRIPTION: Add new item to features tables
+    NAME: add_new_feature
+    DESCRIPTION: Add new item to features tables
 */
+
 
 CREATE PROCEDURE add_new_feature (IN f_name VARCHAR(50), IN associated_release_id INT, IN f_start_date DATE, IN f_duration INT, IN f_description TEXT)
 BEGIN
 	DECLARE feature_end_date DATE;
-	DECLARE release_end_date DATE;
 
 	IF f_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
@@ -17,14 +17,11 @@ BEGIN
 		INSERT INTO features (name, release_id, start_date, duration, description)
 		VALUES (f_name, associated_release_id, IFNULL(f_start_date, CURDATE()), IFNULL(f_duration, 0), IFNULL(f_description, "Description"));
         
-        IF check_release_start_date(associated_release_id) > f_start_date THEN
-		    CALL trigger_releases_start_date_up_update ();
-            
-            SET feature_end_date = f_start_date + f_duration;
-            IF check_release_end_date(associated_release_id) < feature_end_date THEN 
-		        CALL trigger_releases_end_date_up_update ();
-	        END IF;
-	    END IF;
+        CALL start_date_check_trigger_call_features(associated_release_id, f_start_date);
+
+        SET feature_end_date = f_start_date + f_duration;
+        CALL end_date_check_trigger_call_features(associated_release_id, feature_end_date);
+
 	END IF;
 END ;
 
@@ -88,7 +85,7 @@ BEGIN
     
 
     IF check_release_start_date(associated_release_id) > new_start_date THEN
-		CALL trigger_releases_start_date_up_update ();
+		CALL trigger_releases_start_date_update ();
     END IF;
         
     SET offset = calc_offset(new_start_date, old_start_date);
@@ -167,29 +164,38 @@ END ;
 
 
 
+/* Change this back */
 
-
-
-/*
 CREATE PROCEDURE start_date_check_trigger_call_features(IN associated_release_id INT, IN f_start_date DATE)
 BEGIN
 
+    DECLARE associated_project_id INT;
+
 	IF check_release_start_date(associated_release_id) > f_start_date THEN
-		CALL trigger_releases_start_date_up_update ();
-        
+	    CALL trigger_releases_start_date_update ();
+
+        SELECT project_id INTO associated_project_id FROM releases WHERE id = associated_release_id;
+        IF check_project_start_date(associated_project_id) > check_release_start_date(associated_release_id) THEN 
+            CALL trigger_projects_start_date_update ();
+        END IF;
 	END IF;
 END ;
 
 
-CREATE PROCEDURE end_date_check_trigger_call_features(IN associated_release_id INT, IN feature_end_date DATE)
+CREATE PROCEDURE end_date_check_trigger_call_features(IN associated_release_id INT, IN f_end_date DATE)
 BEGIN
+    DECLARE associated_project_id INT;
 
-	IF check_release_end_date(associated_release_id) < feature_end_date THEN 
-		CALL trigger_releases_end_date_up_update ();
+	IF check_release_end_date(associated_release_id) < f_end_date THEN 
+		CALL trigger_releases_end_date_update ();
         
+        SELECT project_id INTO associated_project_id FROM releases WHERE id = associated_release_id;
+        IF check_project_end_date(associated_project_id) < check_release_end_date(associated_release_id) THEN 
+            CALL trigger_projects_end_date_update ();
+
+        END IF;
 	END IF;
 END ;
-*/
 
 
 
@@ -201,29 +207,17 @@ END ;
 
 
 
-CREATE PROCEDURE trigger_features_start_date_up_update()
+
+CREATE PROCEDURE trigger_features_start_date_update()
 BEGIN
-	UPDATE trigger_controls SET tc_update_features_start_date_up = 1;
-	UPDATE trigger_controls SET tc_update_features_start_date_up = 0;
+	UPDATE trigger_controls SET tc_update_features_start_date = 1;
+	UPDATE trigger_controls SET tc_update_features_start_date = 0;
 END ;
 
 
-CREATE PROCEDURE trigger_features_end_date_up_update()
+CREATE PROCEDURE trigger_features_end_date_update()
 BEGIN
-	UPDATE trigger_controls SET tc_update_features_end_date_up = 1;
-	UPDATE trigger_controls SET tc_update_features_end_date_up = 0;
+	UPDATE trigger_controls SET tc_update_features_end_date = 1;
+	UPDATE trigger_controls SET tc_update_features_end_date = 0;
 END ;
 
-
-CREATE PROCEDURE trigger_features_start_date_down_update()
-BEGIN
-	UPDATE trigger_controls SET tc_update_features_start_date_down = 1;
-	UPDATE trigger_controls SET tc_update_features_start_date_down = 0;
-END ;
-
-
-CREATE PROCEDURE trigger_features_end_date_down_update()
-BEGIN
-	UPDATE trigger_controls SET tc_update_features_end_date_down = 1;
-	UPDATE trigger_controls SET tc_update_features_end_date_down = 0;
-END ;

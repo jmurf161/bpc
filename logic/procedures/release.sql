@@ -1,20 +1,31 @@
-/*                   RELEASE'S PROCEDURES                   */
+/*                   release'S PROCEDURES                   */
 
 /*
  NAME: add_new_release
  DESCRIPTION: Add new item to releases tables
 */
 
-
-CREATE PROCEDURE add_new_release (IN r_name VARCHAR(50), IN r_start_date DATE, IN r_duration INT, IN r_description TEXT)
+CREATE PROCEDURE add_new_release (IN r_name VARCHAR(50), IN associated_project_id INT, IN r_start_date DATE, IN r_duration INT, IN r_description TEXT)
 BEGIN
+	DECLARE release_end_date DATE;
+	DECLARE project_end_date DATE;
+
 	IF r_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
 	ELSE
-		INSERT INTO releases (name, start_date, duration, description)
-		VALUES (r_name, IFNULL(r_start_date, CURDATE()), IFNULL(r_duration, 0), IFNULL(r_description, "Description"));
-    END IF;
+		INSERT INTO releases (name, project_id, start_date, duration, description)
+		VALUES (r_name, associated_project_id, IFNULL(r_start_date, CURDATE()), IFNULL(r_duration, 0), IFNULL(r_description, "Description"));
+        
+        IF check_project_start_date(associated_project_id) > r_start_date THEN
+		    CALL trigger_projects_start_date_update ();
+            
+            SET release_end_date = r_start_date + r_duration;
+            IF check_project_end_date(associated_project_id) < release_end_date THEN 
+		        CALL trigger_projects_end_date_update ();
+	        END IF;
+	    END IF;
+	END IF;
 END ;
 
 /*
@@ -31,21 +42,35 @@ END ;
 
 /*
  NAME: edit_release_name
- DESCRIPTION: Edits the name column from releases table
+ DESCRIPTION: Edits the name column from release table
 */
 
 
-CREATE PROCEDURE edit_release_name (IN new_release_name VARCHAR(50), IN reference_id INT)
+CREATE PROCEDURE edit_release_name (IN new_name VARCHAR(50), IN reference_id INT)
 BEGIN
     UPDATE releases
-    SET name = new_release_name
+    SET name = new_name
+    WHERE id = reference_id;
+END ;
+
+/*
+ NAME: edit_release_associated_project_id
+ DESCRIPTION: Edits the associated_project_id column from release table
+*/
+
+
+CREATE PROCEDURE edit_release_associated_project_id (IN new_project_id INT, IN reference_id INT)
+BEGIN
+    UPDATE releases
+    SET project_id = new_project_id
     WHERE id = reference_id;
 END ;
 
 /*
  NAME: edit_release_start_date
- DESCRIPTION: Edits the start date column from releases table
+ DESCRIPTION: Edits the start date column from release table
 */
+
 
 CREATE PROCEDURE edit_release_start_date (IN new_start_date DATE, IN reference_id INT)
 BEGIN   
@@ -74,34 +99,47 @@ BEGIN
 
 END ;
 
-
 /*
  NAME: edit_release_end_date
- DESCRIPTION: Edits the end date column from releases table
+ DESCRIPTION: Edits the end date column from release table
 */
 
 
 CREATE PROCEDURE edit_release_end_date (IN new_end_date DATE, IN reference_id INT)
 BEGIN
+    DECLARE existing_start_date DATE;
+    DECLARE new_duration INT;
 
-	UPDATE releases
-	SET 
-		end_date = new_end_date,
-		duration = DATEDIFF(new_end_date, start_date)
-	WHERE id = reference_id;
+    SELECT start_date INTO existing_start_date
+    FROM releases
+    WHERE id = reference_id;
+
+    SET new_duration = DATEDIFF(new_end_date, existing_start_date);
+
+    IF new_duration < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'End date cannot be before start date.';
+    ELSE
+        UPDATE releases
+        SET 
+            end_date = new_end_date,
+            duration = new_duration
+        WHERE id = reference_id;
+    END IF;
 END ;
 
 /*
  NAME: edit_release_duration
- DESCRIPTION: Edits the duration column from releases table
+ DESCRIPTION: Edits the duration column from release table
 */
 
 
 CREATE PROCEDURE edit_release_duration (IN new_duration INT, IN reference_id INT)
 BEGIN
+
 	IF new_duration < 0 THEN
 			SIGNAL SQLSTATE '45000'
-			SET MESSAGE_TEXT = 'Duration cannot be negative.';
+			SET MESSAGE_TEXT = 'Price cannot be negative.';
 	ELSE
 		UPDATE releases
 		SET 
@@ -113,7 +151,7 @@ END ;
 
 /*
  NAME: edit_release_description
- DESCRIPTION: Edits the description column from sub features table
+ DESCRIPTION: Edits the description column from release table
 */
 
 
@@ -128,26 +166,27 @@ END ;
 
 
 
+
+
+
 /*
-CREATE PROCEDURE start_date_check_trigger_call_releases(IN associated_feature_id INT, IN release_start_date DATE)
+CREATE PROCEDURE start_date_check_trigger_call_releases(IN associated_project_id INT, IN f_start_date DATE)
 BEGIN
-    
-	IF release_start
-	
-	
-	DECLARE associated_release_id INT;
-    
-	IF check_feature_start_date(associated_feature_id) > subf_start_date THEN 
-		CALL trigger_features_start_date_up_update ();
-		
-		SELECT release_id INTO associated_release_id FROM features WHERE id = associated_feature_id;
-	
-		IF check_release_start_date(associated_release_id) > check_feature_start_date(associated_feature_id) THEN 
-			CALL trigger_releases_start_date_up_update ();
-		END IF;
+
+	IF check_project_start_date(associated_project_id) > f_start_date THEN
+		CALL trigger_projects_start_date_update ();
         
-	END IF;	
-	
+	END IF;
+END ;
+
+
+CREATE PROCEDURE end_date_check_trigger_call_releases(IN associated_project_id INT, IN release_end_date DATE)
+BEGIN
+
+	IF check_project_end_date(associated_project_id) < release_end_date THEN 
+		CALL trigger_projects_end_date_update ();
+        
+	END IF;
 END ;
 */
 
@@ -158,29 +197,19 @@ END ;
 
 
 
-CREATE PROCEDURE trigger_releases_start_date_up_update()
+
+
+
+CREATE PROCEDURE trigger_releases_start_date_update()
 BEGIN
-	UPDATE trigger_controls SET tc_update_releases_start_date_up = 1;
-	UPDATE trigger_controls SET tc_update_releases_start_date_up = 0;
+	UPDATE trigger_controls SET tc_update_releases_start_date = 1;
+	UPDATE trigger_controls SET tc_update_releases_start_date = 0;
 END ;
 
 
-CREATE PROCEDURE trigger_releases_end_date_up_update()
-BEGIN        
-	UPDATE trigger_controls SET tc_update_releases_end_date_up = 1;
-	UPDATE trigger_controls SET tc_update_releases_end_date_up = 0;
-END ;
-
-
-CREATE PROCEDURE trigger_releases_start_date_down_update()
+CREATE PROCEDURE trigger_releases_end_date_update()
 BEGIN
-	UPDATE trigger_controls SET tc_update_releases_start_date_down = 1;
-	UPDATE trigger_controls SET tc_update_releases_start_date_down = 0;
+	UPDATE trigger_controls SET tc_update_releases_end_date = 1;
+	UPDATE trigger_controls SET tc_update_releases_end_date = 0;
 END ;
 
-
-CREATE PROCEDURE trigger_releases_end_date_down_update()
-BEGIN        
-	UPDATE trigger_controls SET tc_update_releases_end_date_down = 1;
-	UPDATE trigger_controls SET tc_update_releases_end_date_down = 0;
-END ;

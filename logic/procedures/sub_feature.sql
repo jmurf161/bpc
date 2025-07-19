@@ -112,7 +112,7 @@ BEGIN
             duration = new_duration
         WHERE id = reference_id;
         
-        CALL trigger_features_end_date_up_update ();
+        CALL trigger_features_end_date_update ();
         
     END IF;
 END ;
@@ -161,16 +161,21 @@ END ;
 CREATE PROCEDURE start_date_check_trigger_call_subfs(IN associated_feature_id INT, IN subf_start_date DATE)
 BEGIN
     DECLARE associated_release_id INT;
-    
+    DECLARE associated_project_id INT;
+
 	IF check_feature_start_date(associated_feature_id) > subf_start_date THEN 
-		CALL trigger_features_start_date_up_update ();
+		CALL trigger_features_start_date_update ();
 		
 		SELECT release_id INTO associated_release_id FROM features WHERE id = associated_feature_id;
-	
 		IF check_release_start_date(associated_release_id) > check_feature_start_date(associated_feature_id) THEN 
-			CALL trigger_releases_start_date_up_update ();
-		END IF;
-        
+			CALL trigger_releases_start_date_update ();
+		
+            SELECT project_id INTO associated_project_id FROM releases WHERE id = associated_release_id;
+            IF check_project_start_date(associated_project_id) > check_release_start_date(associated_release_id) THEN 
+                CALL trigger_projects_start_date_update ();
+		    
+            END IF;
+        END IF;
 	END IF;	
 END ;
 
@@ -180,17 +185,23 @@ END ;
 
 CREATE PROCEDURE end_date_check_trigger_call_subfs(IN associated_feature_id INT, IN subf_end_date DATE)
 BEGIN
-	
     DECLARE associated_release_id INT;
+    DECLARE associated_project_id INT;
     
 	IF check_feature_end_date(associated_feature_id) < subf_end_date THEN 
-		CALL trigger_features_end_date_up_update ();
-
+		CALL trigger_features_end_date_update ();
+        
 		SELECT release_id INTO associated_release_id FROM features WHERE id = associated_feature_id;
 		IF check_release_end_date(associated_release_id) < check_feature_end_date(associated_feature_id) THEN 
-			CALL trigger_releases_end_date_up_update ();
+			CALL trigger_releases_end_date_update ();
 			
-		END IF;
+            
+            SELECT project_id INTO associated_project_id FROM releases WHERE id = associated_release_id;
+            IF check_project_end_date(associated_project_id) < check_release_end_date(associated_release_id) THEN 
+                CALL trigger_projects_end_date_update ();
+
+            END IF;
+        END IF;
 	END IF;
 END ;
 

@@ -18,6 +18,7 @@ sql_files = [
     'logic/procedures/feature.sql',
     'logic/procedures/material.sql',
     'logic/procedures/order.sql',
+    'logic/procedures/project.sql',
     'logic/procedures/release.sql',
     'logic/procedures/sub_feature.sql',
     'logic/triggers/triggers.sql',
