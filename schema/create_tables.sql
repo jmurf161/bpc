@@ -23,7 +23,11 @@ CREATE TABLE departments (
     description TEXT
     #FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
+/* 
+    Add parent to releases called projects.
+    Add departments to project, releases, features, and sub features.
 
+*/
 CREATE TABLE releases (
 	name VARCHAR(50) NOT NULL UNIQUE,
     id INT AUTO_INCREMENT PRIMARY KEY,

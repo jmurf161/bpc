@@ -1,5 +1,7 @@
 import mysql.connector
 import sqlparse
+import sys
+
 
 conn = mysql.connector.connect(
     host="localhost",
@@ -52,3 +54,5 @@ print("~~~ Database Created ~~~")
 conn.commit()
 cursor.close()
 conn.close()
+
+
