@@ -1,0 +1,10 @@
+
+
+1. ISSUE: Duration for projects and releases table is not being calculated properly. Probably has something to do with add_new_####
+
+2. ISSUE: Can't add more than 30 days to the add_new_##### functions.
+
+3. BUG: Somewhere in the edit_######_start_date functions it is causing a 2021 year to appear when there shouldnt be
+Most likly here and release, while feature doesnt use the join statements so it is the least likely.
+
+4. ISSUE: Might want to add end_date instead of duration.

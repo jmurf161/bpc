@@ -8,12 +8,18 @@
 
 CREATE PROCEDURE add_new_project (IN p_name VARCHAR(50), IN p_start_date DATE, IN p_duration INT, IN p_description TEXT)
 BEGIN
+
+	DECLARE project_end_date DATE;
+
 	IF p_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
 	ELSE
 		INSERT INTO projects (name, start_date, duration, description)
 		VALUES (p_name, IFNULL(p_start_date, CURDATE()), IFNULL(p_duration, 0), IFNULL(p_description, "Description"));
+
+		SET project_end_date = p_start_date + p_duration;
+		UPDATE projects SET end_date = project_end_date WHERE end_date IS NULL;
     END IF;
 END ;
 
@@ -53,18 +59,12 @@ BEGIN
 	DECLARE offset INT;
 
 	SELECT start_date INTO old_start_date FROM projects WHERE id = reference_id;
-
-	UPDATE projects 
-	SET start_date = new_start_date
-	WHERE id = reference_id;
+	UPDATE projects SET start_date = new_start_date WHERE id = reference_id;
 
 	SELECT start_date INTO new_start_date FROM projects WHERE id = reference_id;
 	SET offset = calc_offset(new_start_date, old_start_date);
 
-
-	UPDATE releases
-	SET start_date = DATE_ADD(start_date, INTERVAL offset DAY)
-	WHERE project_id = reference_id;
+	UPDATE releases SET start_date = DATE_ADD(start_date, INTERVAL offset DAY) WHERE project_id = reference_id;
 
 	UPDATE features f
 	JOIN releases r ON f.release_id = r.id

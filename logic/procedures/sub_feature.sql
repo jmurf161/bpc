@@ -20,6 +20,8 @@ BEGIN
         CALL start_date_check_trigger_call_subfs(associated_feature_id, subf_start_date);
 		
 		SET subf_end_date = subf_start_date + subf_duration;
+        UPDATE sub_features SET end_date = subf_end_date WHERE end_date IS NULL;
+
         CALL end_date_check_trigger_call_subfs(associated_feature_id, subf_end_date);
        
 	END IF;
@@ -153,11 +155,6 @@ END ;
 
 
 
-
-
-
-
-
 CREATE PROCEDURE start_date_check_trigger_call_subfs(IN associated_feature_id INT, IN subf_start_date DATE)
 BEGIN
     DECLARE associated_release_id INT;
@@ -178,8 +175,6 @@ BEGIN
         END IF;
 	END IF;	
 END ;
-
-
 
 
 
@@ -204,16 +199,3 @@ BEGIN
         END IF;
 	END IF;
 END ;
-
-
-
-
-
-
-
-
-
-
-
-
-

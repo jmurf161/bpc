@@ -8,7 +8,6 @@
 CREATE PROCEDURE add_new_release (IN r_name VARCHAR(50), IN associated_project_id INT, IN r_start_date DATE, IN r_duration INT, IN r_description TEXT)
 BEGIN
 	DECLARE release_end_date DATE;
-	DECLARE project_end_date DATE;
 
 	IF r_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
@@ -17,14 +16,13 @@ BEGIN
 		INSERT INTO releases (name, project_id, start_date, duration, description)
 		VALUES (r_name, associated_project_id, IFNULL(r_start_date, CURDATE()), IFNULL(r_duration, 0), IFNULL(r_description, "Description"));
         
-        IF check_project_start_date(associated_project_id) > r_start_date THEN
-		    CALL trigger_projects_start_date_update ();
-            
-            SET release_end_date = r_start_date + r_duration;
-            IF check_project_end_date(associated_project_id) < release_end_date THEN 
-		        CALL trigger_projects_end_date_update ();
-	        END IF;
-	    END IF;
+        CALL start_date_check_trigger_call_releases(associated_project_id, r_start_date);
+
+        SET release_end_date = r_start_date + r_duration;
+        UPDATE releases SET end_date = release_end_date WHERE end_date IS NULL;
+
+        CALL end_date_check_trigger_call_releases(associated_project_id, release_end_date);
+
 	END IF;
 END ;
 
@@ -79,10 +77,7 @@ BEGIN
     DECLARE offset INT;
 	
 	SELECT start_date INTO old_start_date FROM releases WHERE id = reference_id;
-
-    UPDATE releases r
-    SET start_date = new_start_date
-    WHERE id = reference_id;
+    UPDATE releases r SET start_date = new_start_date WHERE id = reference_id;
 	
     SELECT start_date INTO new_start_date FROM releases WHERE id = reference_id;
     SET offset = calc_offset(new_start_date, old_start_date);
@@ -110,10 +105,7 @@ BEGIN
     DECLARE existing_start_date DATE;
     DECLARE new_duration INT;
 
-    SELECT start_date INTO existing_start_date
-    FROM releases
-    WHERE id = reference_id;
-
+    SELECT start_date INTO existing_start_date FROM releases WHERE id = reference_id;
     SET new_duration = DATEDIFF(new_end_date, existing_start_date);
 
     IF new_duration < 0 THEN
@@ -169,33 +161,25 @@ END ;
 
 
 
-/*
-CREATE PROCEDURE start_date_check_trigger_call_releases(IN associated_project_id INT, IN f_start_date DATE)
+
+CREATE PROCEDURE start_date_check_trigger_call_releases(IN associated_project_id INT, IN r_start_date DATE)
 BEGIN
 
-	IF check_project_start_date(associated_project_id) > f_start_date THEN
-		CALL trigger_projects_start_date_update ();
-        
+	IF check_project_start_date(associated_project_id) > r_start_date THEN
+	    CALL trigger_projects_start_date_update ();
+
 	END IF;
 END ;
 
 
-CREATE PROCEDURE end_date_check_trigger_call_releases(IN associated_project_id INT, IN release_end_date DATE)
+CREATE PROCEDURE end_date_check_trigger_call_releases(IN associated_project_id INT, IN r_end_date DATE)
 BEGIN
 
-	IF check_project_end_date(associated_project_id) < release_end_date THEN 
+	IF check_project_end_date(associated_project_id) < r_end_date THEN 
 		CALL trigger_projects_end_date_update ();
-        
+    
 	END IF;
 END ;
-*/
-
-
-
-
-
-
-
 
 
 
@@ -212,4 +196,3 @@ BEGIN
 	UPDATE trigger_controls SET tc_update_releases_end_date = 1;
 	UPDATE trigger_controls SET tc_update_releases_end_date = 0;
 END ;
-

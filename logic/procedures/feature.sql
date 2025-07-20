@@ -20,6 +20,8 @@ BEGIN
         CALL start_date_check_trigger_call_features(associated_release_id, f_start_date);
 
         SET feature_end_date = f_start_date + f_duration;
+        UPDATE features SET end_date = feature_end_date WHERE end_date IS NULL;
+
         CALL end_date_check_trigger_call_features(associated_release_id, feature_end_date);
 
 	END IF;
@@ -76,24 +78,17 @@ BEGIN
     DECLARE offset INT;
 
     SELECT start_date INTO old_start_date FROM features WHERE id = reference_id;
-
-	UPDATE features
-    SET start_date = new_start_date WHERE id = reference_id;
+	UPDATE features SET start_date = new_start_date WHERE id = reference_id;
 
     SELECT start_date INTO new_start_date FROM features WHERE id = reference_id;
     SELECT release_id INTO associated_release_id FROM features WHERE id = reference_id;
     
-
     IF check_release_start_date(associated_release_id) > new_start_date THEN
 		CALL trigger_releases_start_date_update ();
     END IF;
         
     SET offset = calc_offset(new_start_date, old_start_date);
-
-    UPDATE sub_features 
-    SET 
-        start_date = DATE_ADD(start_date, INTERVAL offset DAY)
-    WHERE feature_id = reference_id;
+    UPDATE sub_features SET start_date = DATE_ADD(start_date, INTERVAL offset DAY) WHERE feature_id = reference_id;
     
 END ;
 
@@ -108,9 +103,7 @@ BEGIN
     DECLARE existing_start_date DATE;
     DECLARE new_duration INT;
 
-    SELECT start_date INTO existing_start_date
-    FROM features
-    WHERE id = reference_id;
+    SELECT start_date INTO existing_start_date FROM features WHERE id = reference_id;
 
     SET new_duration = DATEDIFF(new_end_date, existing_start_date);
 
@@ -162,10 +155,6 @@ END ;
 
 
 
-
-
-/* Change this back */
-
 CREATE PROCEDURE start_date_check_trigger_call_features(IN associated_release_id INT, IN f_start_date DATE)
 BEGIN
 
@@ -196,14 +185,6 @@ BEGIN
         END IF;
 	END IF;
 END ;
-
-
-
-
-
-
-
-
 
 
 

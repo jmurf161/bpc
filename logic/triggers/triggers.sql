@@ -95,7 +95,7 @@ BEGIN
 END ;
 
 
-
+/*
 CREATE TRIGGER calc_subfs_end_date_insert
 BEFORE INSERT ON sub_features
 FOR EACH ROW
@@ -165,4 +165,5 @@ FOR EACH ROW
 BEGIN
     SET NEW.end_date = DATE_ADD(NEW.start_date, INTERVAL NEW.duration DAY);
 END ;
+*/
 
