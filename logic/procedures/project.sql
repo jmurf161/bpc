@@ -18,7 +18,7 @@ BEGIN
 		INSERT INTO projects (name, start_date, duration, description)
 		VALUES (p_name, IFNULL(p_start_date, CURDATE()), IFNULL(p_duration, 0), IFNULL(p_description, "Description"));
 
-		SET project_end_date = p_start_date + p_duration;
+		SET project_end_date = DATE_ADD(p_start_date, INTERVAL p_duration DAY);
 		UPDATE projects SET end_date = project_end_date WHERE end_date IS NULL;
     END IF;
 END ;

@@ -17,8 +17,8 @@ BEGIN
 		VALUES (r_name, associated_project_id, IFNULL(r_start_date, CURDATE()), IFNULL(r_duration, 0), IFNULL(r_description, "Description"));
         
         CALL start_date_check_trigger_call_releases(associated_project_id, r_start_date);
-
-        SET release_end_date = r_start_date + r_duration;
+        
+        SET release_end_date = DATE_ADD(r_start_date, INTERVAL r_duration DAY);
         UPDATE releases SET end_date = release_end_date WHERE end_date IS NULL;
 
         CALL end_date_check_trigger_call_releases(associated_project_id, release_end_date);

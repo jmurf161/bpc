@@ -19,7 +19,7 @@ BEGIN
         
         CALL start_date_check_trigger_call_features(associated_release_id, f_start_date);
 
-        SET feature_end_date = f_start_date + f_duration;
+        SET feature_end_date = DATE_ADD(f_start_date, INTERVAL f_duration DAY);
         UPDATE features SET end_date = feature_end_date WHERE end_date IS NULL;
 
         CALL end_date_check_trigger_call_features(associated_release_id, feature_end_date);
