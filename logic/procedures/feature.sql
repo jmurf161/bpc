@@ -6,23 +6,36 @@
 */
 
 
-CREATE PROCEDURE add_new_feature (IN f_name VARCHAR(50), IN associated_release_id INT, IN f_start_date DATE, IN f_duration INT, IN f_description TEXT)
+CREATE PROCEDURE add_new_feature (IN f_name VARCHAR(50), IN associated_release_id INT, IN f_start_date DATE, IN f_end_date DATE, IN f_duration INT, IN f_description TEXT)
 BEGIN
-	DECLARE feature_end_date DATE;
+	DECLARE calc_f_end_date DATE;
+	DECLARE calc_f_duration INT;
+    DECLARE get_f_end_date DATE;
 
 	IF f_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
 	ELSE
-		INSERT INTO features (name, release_id, start_date, duration, description)
-		VALUES (f_name, associated_release_id, IFNULL(f_start_date, CURDATE()), IFNULL(f_duration, 0), IFNULL(f_description, "Description"));
+        IF f_end_date IS NOT NULL AND f_duration IS NOT NULL THEN
+			SIGNAL SQLSTATE '45001'
+			SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
+		END IF; 
+
+		IF f_end_date IS NULL AND f_duration IS NOT NULL THEN
+			SET calc_f_end_date = DATE_ADD(f_start_date, INTERVAL f_duration DAY);
+		END IF;
+		
+		IF f_duration IS NULL AND f_end_date IS NOT NULL THEN
+			SET calc_f_duration = DATEDIFF(f_end_date, f_start_date);
+		END IF;
+
+		INSERT INTO features (name, release_id, start_date, end_date, duration, description)
+		VALUES (f_name, associated_release_id, IFNULL(f_start_date, CURDATE()), IFNULL(f_end_date, calc_f_end_date), IFNULL(f_duration, calc_f_duration), IFNULL(f_description, "Description"));
         
         CALL start_date_check_trigger_call_features(associated_release_id, f_start_date);
 
-        SET feature_end_date = DATE_ADD(f_start_date, INTERVAL f_duration DAY);
-        UPDATE features SET end_date = feature_end_date WHERE end_date IS NULL;
-
-        CALL end_date_check_trigger_call_features(associated_release_id, feature_end_date);
+        SELECT end_date INTO get_f_end_date FROM features where name = f_name;
+        CALL end_date_check_trigger_call_features(associated_release_id, get_f_end_date);
 
 	END IF;
 END ;

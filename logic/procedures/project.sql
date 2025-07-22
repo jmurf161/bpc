@@ -3,23 +3,39 @@
 /*
  NAME: add_new_project
  DESCRIPTION: Add new item to projects tables
+
+
+ SET calc_p_end_date = DATE_ADD(p_start_date, INTERVAL p_duration DAY);
+ UPDATE projects SET end_date = calc_p_end_date WHERE end_date IS NULL;
 */
 
 
-CREATE PROCEDURE add_new_project (IN p_name VARCHAR(50), IN p_start_date DATE, IN p_duration INT, IN p_description TEXT)
+CREATE PROCEDURE add_new_project (IN p_name VARCHAR(50), IN p_start_date DATE, IN p_end_date DATE, IN p_duration INT, IN p_description TEXT)
 BEGIN
 
-	DECLARE project_end_date DATE;
+	DECLARE calc_p_end_date DATE;
+	DECLARE calc_p_duration INT;
 
 	IF p_duration < 0 THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Duration cannot be negative.';
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'Duration cannot be negative.';
 	ELSE
-		INSERT INTO projects (name, start_date, duration, description)
-		VALUES (p_name, IFNULL(p_start_date, CURDATE()), IFNULL(p_duration, 0), IFNULL(p_description, "Description"));
+		IF p_end_date IS NOT NULL AND p_duration IS NOT NULL THEN
+			SIGNAL SQLSTATE '45001'
+			SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
+		END IF; 
 
-		SET project_end_date = DATE_ADD(p_start_date, INTERVAL p_duration DAY);
-		UPDATE projects SET end_date = project_end_date WHERE end_date IS NULL;
+		IF p_end_date IS NULL AND p_duration IS NOT NULL THEN
+			SET calc_p_end_date = DATE_ADD(p_start_date, INTERVAL p_duration DAY);
+		END IF;
+		
+		IF p_duration IS NULL AND p_end_date IS NOT NULL THEN
+			SET calc_p_duration = DATEDIFF(p_end_date, p_start_date);
+		END IF;
+
+		INSERT INTO projects (name, start_date, end_date, duration, description)
+		VALUES (p_name, IFNULL(p_start_date, CURDATE()), IFNULL(p_end_date, calc_p_end_date), IFNULL(p_duration, calc_p_duration), IFNULL(p_description, "Description"));
+		
     END IF;
 END ;
 
@@ -83,12 +99,12 @@ END ;
 
 
 /*
- NAME: edit_project_end_date
+ NAME: edit_calc_p_end_date
  DESCRIPTION: Edits the end date column from projects table
 */
 
 
-CREATE PROCEDURE edit_project_end_date (IN new_end_date DATE, IN reference_id INT)
+CREATE PROCEDURE edit_calc_p_end_date (IN new_end_date DATE, IN reference_id INT)
 BEGIN
 
 	UPDATE projects
@@ -99,12 +115,12 @@ BEGIN
 END ;
 
 /*
- NAME: edit_project_duration
+ NAME: edit_calc_p_duration
  DESCRIPTION: Edits the duration column from projects table
 */
 
 
-CREATE PROCEDURE edit_project_duration (IN new_duration INT, IN reference_id INT)
+CREATE PROCEDURE edit_calc_p_duration (IN new_duration INT, IN reference_id INT)
 BEGIN
 	IF new_duration < 0 THEN
 			SIGNAL SQLSTATE '45000'

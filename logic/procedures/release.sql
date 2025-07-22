@@ -5,23 +5,36 @@
  DESCRIPTION: Add new item to releases tables
 */
 
-CREATE PROCEDURE add_new_release (IN r_name VARCHAR(50), IN associated_project_id INT, IN r_start_date DATE, IN r_duration INT, IN r_description TEXT)
+CREATE PROCEDURE add_new_release (IN r_name VARCHAR(50), IN associated_project_id INT, IN r_start_date DATE, IN r_end_date DATE, IN r_duration INT, IN r_description TEXT)
 BEGIN
-	DECLARE release_end_date DATE;
+	DECLARE calc_r_end_date DATE;
+	DECLARE calc_r_duration INT;
+    DECLARE get_r_end_date DATE;
 
 	IF r_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
 	ELSE
-		INSERT INTO releases (name, project_id, start_date, duration, description)
-		VALUES (r_name, associated_project_id, IFNULL(r_start_date, CURDATE()), IFNULL(r_duration, 0), IFNULL(r_description, "Description"));
+        IF r_end_date IS NOT NULL AND r_duration IS NOT NULL THEN
+			SIGNAL SQLSTATE '45001'
+			SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
+		END IF; 
+
+        IF r_end_date IS NULL AND r_duration IS NOT NULL THEN
+			SET calc_r_end_date = DATE_ADD(r_start_date, INTERVAL r_duration DAY);
+		END IF;
+		
+		IF r_duration IS NULL AND r_end_date IS NOT NULL THEN
+			SET calc_r_duration = DATEDIFF(r_end_date, r_start_date);
+		END IF;
+
+		INSERT INTO releases (name, project_id, start_date, end_date, duration, description)
+		VALUES (r_name, associated_project_id, IFNULL(r_start_date, CURDATE()),IFNULL(r_end_date, calc_r_end_date), IFNULL(r_duration, calc_r_duration), IFNULL(r_description, "Description"));
         
         CALL start_date_check_trigger_call_releases(associated_project_id, r_start_date);
-        
-        SET release_end_date = DATE_ADD(r_start_date, INTERVAL r_duration DAY);
-        UPDATE releases SET end_date = release_end_date WHERE end_date IS NULL;
 
-        CALL end_date_check_trigger_call_releases(associated_project_id, release_end_date);
+        SELECT end_date INTO get_r_end_date FROM releases where name = r_name;
+        CALL end_date_check_trigger_call_releases(associated_project_id, get_r_end_date);
 
 	END IF;
 END ;

@@ -35,8 +35,6 @@ END ;
 
 
 
-
-
 CREATE FUNCTION check_feature_start_date(associated_feature_id INT)
 RETURNS DATE
 DETERMINISTIC
@@ -68,6 +66,7 @@ BEGIN
 END ;
 
 
+
 CREATE FUNCTION check_release_start_date(associated_release_id INT)
 RETURNS DATE
 DETERMINISTIC
@@ -81,6 +80,7 @@ BEGIN
 
     RETURN result;
 END ;
+
 
 
 CREATE FUNCTION check_release_end_date(associated_release_id INT)
@@ -99,7 +99,6 @@ END ;
 
 
 
-
 CREATE FUNCTION check_project_start_date(associated_project_id INT)
 RETURNS DATE
 DETERMINISTIC
@@ -113,6 +112,7 @@ BEGIN
 
     RETURN result;
 END ;
+
 
 
 CREATE FUNCTION check_project_end_date(associated_project_id INT)
@@ -131,8 +131,6 @@ END ;
 
 
 
-
-
 CREATE FUNCTION calc_offset(new_start_date DATE, old_start_date DATE)
 RETURNS INT
 DETERMINISTIC
@@ -144,3 +142,5 @@ BEGIN
 
     RETURN offset_days;
 END ;
+
+

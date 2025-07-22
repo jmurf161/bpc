@@ -6,23 +6,36 @@
 */
 
 
-CREATE PROCEDURE add_new_sub_feature (IN subf_name VARCHAR(50), IN associated_feature_id INT, IN subf_start_date DATE, IN subf_duration INT, IN subf_description TEXT)
+CREATE PROCEDURE add_new_sub_feature (IN subf_name VARCHAR(50), IN associated_feature_id INT, IN subf_start_date DATE, IN subf_end_date DATE, IN subf_duration INT, IN subf_description TEXT)
 BEGIN
-	DECLARE subf_end_date DATE;
+	DECLARE calc_subf_end_date DATE;
+    DECLARE calc_subf_duration INT;
+    DECLARE get_subf_end_date DATE;
 
 	IF subf_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
 	ELSE
-		INSERT INTO sub_features (name, feature_id, start_date, duration, description)
-		VALUES (subf_name, associated_feature_id, IFNULL(subf_start_date, CURDATE()), IFNULL(subf_duration, 0), IFNULL(subf_description, "Description"));
+        IF subf_end_date IS NOT NULL AND subf_duration IS NOT NULL THEN
+			SIGNAL SQLSTATE '45001'
+			SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
+		END IF; 
+
+		IF subf_end_date IS NULL AND subf_duration IS NOT NULL THEN
+			SET calc_subf_end_date = DATE_ADD(subf_start_date, INTERVAL subf_duration DAY);
+		END IF;
+		
+		IF subf_duration IS NULL AND subf_end_date IS NOT NULL THEN
+			SET calc_subf_duration = DATEDIFF(subf_end_date, subf_start_date);
+		END IF;
+
+		INSERT INTO sub_features (name, feature_id, start_date, end_date, duration, description)
+		VALUES (subf_name, associated_feature_id, IFNULL(subf_start_date, CURDATE()), IFNULL(subf_end_date, calc_subf_end_date), IFNULL(subf_duration, calc_subf_duration), IFNULL(subf_description, "Description"));
 		
         CALL start_date_check_trigger_call_subfs(associated_feature_id, subf_start_date);
-		
-		SET subf_end_date = DATE_ADD(subf_start_date, INTERVAL subf_duration DAY);
-        UPDATE sub_features SET end_date = subf_end_date WHERE end_date IS NULL;
-
-        CALL end_date_check_trigger_call_subfs(associated_feature_id, subf_end_date);
+        
+        SELECT end_date INTO get_subf_end_date FROM sub_features WHERE name = subf_name;
+        CALL end_date_check_trigger_call_subfs(associated_feature_id, get_subf_end_date);
        
 	END IF;
 END ;
@@ -77,6 +90,7 @@ END ;
 CREATE PROCEDURE edit_sub_feature_start_date (IN new_start_date DATE, IN reference_id INT)
 BEGIN
 	DECLARE assoicated_feature_id INT;
+
 	UPDATE sub_features
     SET 
 		start_date = new_start_date,
