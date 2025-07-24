@@ -8,10 +8,25 @@ from gui.DepartmentTab import DepartmentTab
 from gui.BudgetOverviewTab import BudgetOverviewTab
 from gui.InfoTab import InfoTab
 from gui.SettingsTab import SettingsTab
+from gui.mysql_connect import create_connection
 
 
 class MainWindow(QWidget):
     def __init__(self):
+
+        self.db = create_connection("localhost", "root", "password", "bpc")
+        self.cursor = self.db.cursor(dictionary=True)
+
+        self.cursor.execute("SELECT NOW();")
+        print("[DB Connected] Current Time:", self.cursor.fetchone())
+
+        self.cursor.execute("SELECT DATABASE();")
+        print("[DB Connected] Database:", self.cursor.fetchone())
+        
+        self.cursor.execute("SHOW TABLES;")
+        print("[DB Connected] Tables:", self.cursor.fetchone())
+
+
         super().__init__()
         self.setWindowTitle("Project Dashboard")
         self.resize(900, 600)
@@ -24,7 +39,7 @@ class MainWindow(QWidget):
 
         self.tabs.addTab(HomeTab(self), "Home")
         self.tabs.addTab(RoadMapTab(), "Road Map")
-        self.tabs.addTab(ProgramTab(), "Program")
+        self.tabs.addTab(ProgramTab(self), "Program")
         self.tabs.addTab(MaterialTab(), "Materials")
         self.tabs.addTab(DepartmentTab(), "Department")
         self.tabs.addTab(BudgetOverviewTab(), "Budget Overview")
@@ -47,7 +62,15 @@ class MainWindow(QWidget):
         else:
             self.setStyleSheet("")
 
+    def closeEvent(self, event):
+        # ✅ Close MySQL connection when GUI exits
+        if self.db.is_connected():
+            self.cursor.close()
+            self.db.close()
+            print("MySQL connection closed.")
+        super().closeEvent(event)
 
+        
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()

@@ -12,14 +12,16 @@ BEGIN
     DECLARE calc_subf_duration INT;
     DECLARE get_subf_end_date DATE;
 
-	IF subf_duration < 0 THEN
+
+    IF subf_end_date IS NOT NULL AND subf_duration IS NOT NULL THEN
+        SIGNAL SQLSTATE '45001'
+        SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
+
+	ELSEIF subf_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
+
 	ELSE
-        IF subf_end_date IS NOT NULL AND subf_duration IS NOT NULL THEN
-			SIGNAL SQLSTATE '45001'
-			SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
-		END IF; 
 
 		IF subf_end_date IS NULL AND subf_duration IS NOT NULL THEN
 			SET calc_subf_end_date = DATE_ADD(subf_start_date, INTERVAL subf_duration DAY);

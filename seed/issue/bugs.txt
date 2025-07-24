@@ -6,6 +6,4 @@
 Most likly here and release, while feature doesnt use the join statements so it is the least likely.
 
 
-3. TO CHANGE / ADD: Might want to add end_date instead of duration, so needs to include both.
-
 start_date = DATE_SUB(end_date, INTERVAL duration DAY);

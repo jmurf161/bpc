@@ -12,14 +12,15 @@ BEGIN
 	DECLARE calc_f_duration INT;
     DECLARE get_f_end_date DATE;
 
-	IF f_duration < 0 THEN
+	IF f_end_date IS NOT NULL AND f_duration IS NOT NULL THEN
+        SIGNAL SQLSTATE '45001'
+        SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both'; 
+    
+    ELSEIF f_duration < 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Duration cannot be negative.';
+        
 	ELSE
-        IF f_end_date IS NOT NULL AND f_duration IS NOT NULL THEN
-			SIGNAL SQLSTATE '45001'
-			SET MESSAGE_TEXT = 'Enter either the end_date or the duration, not both';
-		END IF; 
 
 		IF f_end_date IS NULL AND f_duration IS NOT NULL THEN
 			SET calc_f_end_date = DATE_ADD(f_start_date, INTERVAL f_duration DAY);
